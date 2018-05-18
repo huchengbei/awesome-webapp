@@ -1,4 +1,3 @@
-
 __author__ = 'Michael Liao'
 
 import asyncio, logging
@@ -8,11 +7,10 @@ import aiomysql
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
 
-@asyncio.coroutine
-def create_pool(loop, **kw):
+async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
+    __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
@@ -49,7 +47,7 @@ async def execute(sql, args, autocommit=True):
                 affected = cur.rowcount
             if not autocommit:
                 await conn.commit()
-        except BaseException:
+        except BaseException as e:
             if not autocommit:
                 await conn.rollback()
             raise
@@ -114,12 +112,12 @@ class ModelMetaclass(type):
                 if v.primary_key:
                     # 找到主键:
                     if primaryKey:
-                        raise Exception('Duplicate primary key for field: %s' % k)
+                        raise StandardError('Duplicate primary key for field: %s' % k)
                     primaryKey = k
                 else:
                     fields.append(k)
         if not primaryKey:
-            raise Exception('Primary key not found.')
+            raise StandardError('Primary key not found.')
         for k in mappings.keys():
             attrs.pop(k)
         escaped_fields = list(map(lambda f: '`%s`' % f, fields))
